@@ -7,8 +7,12 @@ mod parse;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let config = parse::Config::new(&args).unwrap_or_else(|err| {
+    let command = parse::Command::new(&args).unwrap_or_else(|err| {
         println!("Parse error: {}", err);
+        process::exit(1);
+    });
+    let config = parse::Config::new(command).unwrap_or_else(|err| {
+        println!("Config error: {}", err);
         process::exit(1);
     });
 
