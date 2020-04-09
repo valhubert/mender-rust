@@ -2,14 +2,37 @@ pub const HELP_STR: &str = "Help hasn't been written yet!";
 
 pub struct Config {
     command: Command,
-    token: String,
+    token: Option<String>,
     server_url: String,
-    cert_file: String,
+    cert_file: Option<String>,
 }
 
 impl Config {
     pub fn new(command: Command) -> Result<Config, &'static str> {
-        Err("nok")
+        let server_url = if let Ok(url) = std::env::var("SERVER_URL") {
+            url
+        } else {
+            return Err("SERVER_URL env variable must be defined");
+        };
+        let token = if let Ok(token) = std::env::var("TOKEN") {
+            Some(token)
+        } else {
+            None
+        };
+        let cert_file = if let Ok(cert) = std::env::var("CERT_FILE") {
+            Some(cert)
+        } else {
+            None
+        };
+        match &command {
+            Command::Deploy { .. } | Command::GetId { .. } | Command::GetInfo { .. }
+                if token == None =>
+            {
+                return Err("TOKEN must be provided for deploy, getid and getinfo commands")
+            }
+            _ => (),
+        }
+        Ok(Config { command, token, server_url, cert_file })
     }
 }
 
@@ -30,7 +53,6 @@ pub enum Command {
         id: String,
     },
     Help,
-    Empty,
 }
 
 impl Command {
