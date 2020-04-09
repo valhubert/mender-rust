@@ -8,7 +8,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(command: Command) -> Result<Config, &'static str>{
+    pub fn new(command: Command) -> Result<Config, &'static str> {
         Err("nok")
     }
 }
@@ -123,8 +123,20 @@ mod tests {
     #[test]
     fn deploy_group_artifact() {
         let (group, artifact) = (String::from("prod"), String::from("release"));
-        let args = vec![String::from("name"), String::from("deploy"), group.clone(), artifact.clone()];
+        let args = vec![
+            String::from("name"),
+            String::from("deploy"),
+            group.clone(),
+            artifact.clone(),
+        ];
         let command = Command::new(&args).unwrap();
-        assert_eq!(command, Command::Deploy { group, artifact, name: String::new() });
+        assert_eq!(
+            command,
+            Command::Deploy {
+                group,
+                artifact,
+                name: String::new()
+            }
+        );
     }
 }
