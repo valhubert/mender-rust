@@ -1,4 +1,20 @@
-pub const HELP_STR: &str = "Help hasn't been written yet!";
+pub const HELP_STR: &str = "\
+This is mender-rust utility, a small command line tool
+to perform tasks on a Mender server using its APIs.
+
+Available commands are:
+ * help -> display this help.
+ * login email -> returns a token for the given user email, password
+   needs to be typed manually.
+ * deploy group artifact [name] -> deploy the given artifact to the given group.
+   An optional name can be given, if there are none the group name is used.
+ * getid serialnumber -> get the mender id of a device based on its attribute SerialNumber.
+ * getinfo id -> return info of the device with the given id.
+
+Used environment variables:
+ * SERVER_URL -> url of the mender server, must be provided.
+ * TOKEN -> authentication token, must be provided for deploy, getid and getinfo commands.
+ * CERT_FILE -> optional verification certificate for the server secure connection.";
 
 pub struct Config {
     command: Command,
