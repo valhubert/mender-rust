@@ -2,6 +2,7 @@ use std::env;
 use std::error::Error;
 use std::process;
 
+mod mender;
 mod parse;
 
 fn main() {
@@ -27,5 +28,14 @@ fn main() {
 }
 
 fn run(config: parse::Config) -> Result<(), Box<dyn Error>> {
+    match config.command {
+        parse::Command::Login { .. } => {
+            println!("Type password:");
+            let mut password = String::new();
+            std::io::stdin().read_line(&mut password)?;
+            println!("Token {}", mender::get_token(&config, &password)?);
+        }
+        _ => println!("Another command"),
+    };
     Ok(())
 }

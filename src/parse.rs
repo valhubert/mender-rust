@@ -17,10 +17,10 @@ Used environment variables:
  * CERT_FILE -> optional verification certificate for the server secure connection.";
 
 pub struct Config {
-    command: Command,
-    token: Option<String>,
-    server_url: String,
-    cert_file: Option<String>,
+    pub command: Command,
+    pub token: Option<String>,
+    pub server_url: String,
+    pub cert_file: Option<String>,
 }
 
 impl Config {
@@ -48,7 +48,12 @@ impl Config {
             }
             _ => (),
         }
-        Ok(Config { command, token, server_url, cert_file })
+        Ok(Config {
+            command,
+            token,
+            server_url,
+            cert_file,
+        })
     }
 }
 
