@@ -33,7 +33,7 @@ fn run(config: parse::Config) -> Result<(), Box<dyn Error>> {
             println!("Type password:");
             let mut password = String::new();
             std::io::stdin().read_line(&mut password)?;
-            println!("Token {}", mender::get_token(&config, &password)?);
+            println!("Token {}", mender::get_token(&config, &password.trim())?);
         }
         _ => println!("Another command"),
     };
