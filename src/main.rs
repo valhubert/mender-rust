@@ -35,6 +35,9 @@ fn run(config: parse::Config) -> Result<(), Box<dyn Error>> {
             std::io::stdin().read_line(&mut password)?;
             println!("Token {}", mender::get_token(&config, &password.trim())?);
         }
+        parse::Command::Deploy { .. } => {
+            println!("Deployed to {} devices", mender::deploy(&config)?)
+        }
         _ => println!("Another command"),
     };
     Ok(())

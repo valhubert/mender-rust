@@ -58,3 +58,10 @@ pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
         ))))
     }
 }
+
+/// Deploy an update to a device group, return the number of devices affected.
+/// An error can occur if communication with the server fails,
+/// if the group or the artifact is not found.
+pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
+    Ok(0)
+}
