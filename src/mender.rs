@@ -61,7 +61,38 @@ pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
 
 /// Deploy an update to a device group, return the number of devices affected.
 /// An error can occur if communication with the server fails,
-/// if the group or the artifact is not found.
+/// if the group or the artifact is not found
+/// and if command is not Deploy or token is not present.
 pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
-    Ok(0)
+    if let (
+        Command::Deploy {
+            group,
+            artifact,
+            name,
+        },
+        Some(token),
+    ) = (&conf.command, &conf.token)
+    {
+        let name = if name.is_empty() { group } else { name };
+        let client = blocking_client(None)?;
+        let mut page = Some(1);
+        while let Some(page_idx) = page {
+            let list_url = format!(
+                "{}/api/management/v1/inventory/groups/{}/devices",
+                conf.server_url, group
+            );
+            let list_devices = client
+                .get(&list_url)
+                .bearer_auth(token)
+                .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
+                .send()?;
+            println!("RES: {}", list_devices.text().unwrap());
+            page = None;
+        }
+        Ok(0)
+    } else {
+        Err(Box::new(MenderError::new(String::from(
+            "Command must be Deploy and token must be provided for deploy",
+        ))))
+    }
 }
