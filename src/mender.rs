@@ -76,6 +76,7 @@ pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
         let name = if name.is_empty() { group } else { name };
         let client = blocking_client(None)?;
         let mut page = Some(1);
+        let mut devices: Vec<String> = vec![];
         while let Some(page_idx) = page {
             let list_url = format!(
                 "{}/api/management/v1/inventory/groups/{}/devices",
@@ -86,9 +87,20 @@ pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
                 .bearer_auth(token)
                 .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
                 .send()?;
-            println!("RES: {}", list_devices.text().unwrap());
-            page = None;
+            if !list_devices.status().is_success() {
+                return Err(Box::new(MenderError::new(format!(
+                    "deploy error, couldn't list devices in group {}. Status code '{}' response '{}'",
+                    group, list_devices.status(), list_devices.text().unwrap()))));
+            }
+            let mut res = list_devices.json::<Vec<String>>()?;
+            devices.append(&mut res);
+            page = if res.len() == 0 {
+                None
+            } else {
+                Some(page_idx + 1)
+            };
         }
+        println!("Devices: {:?}", devices);
         Ok(0)
     } else {
         Err(Box::new(MenderError::new(String::from(
