@@ -1,8 +1,10 @@
 use super::parse::{Command, Config};
+use serde::Serialize;
 use std::error::Error;
 use std::fmt::Display;
 
 pub const LOGIN_API: &str = "/api/management/v1/useradm/auth/login";
+pub const DEPLOY_API: &str = "/api/management/v1/deployments/deployments";
 
 #[derive(Debug)]
 pub struct MenderError {
@@ -59,11 +61,18 @@ pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
     }
 }
 
+#[derive(Serialize)]
+struct DeployData<'a> {
+    artifact_name: &'a str,
+    name: &'a str,
+    devices: Vec<String>,
+}
+
 /// Deploy an update to a device group, return the number of devices affected.
 /// An error can occur if communication with the server fails,
 /// if the group or the artifact is not found
 /// and if command is not Deploy or token is not present.
-pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
+pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
     if let (
         Command::Deploy {
             group,
@@ -74,7 +83,13 @@ pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
     ) = (&conf.command, &conf.token)
     {
         let name = if name.is_empty() { group } else { name };
+        println!(
+            "Posting deployment to group {} using artifact {} and with name {}.",
+            &group, &artifact, &name
+        );
         let client = blocking_client(None)?;
+
+        // List devices in the group
         let mut page = Some(1);
         let mut devices: Vec<String> = vec![];
         while let Some(page_idx) = page {
@@ -89,7 +104,7 @@ pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
                 .send()?;
             if !list_devices.status().is_success() {
                 return Err(Box::new(MenderError::new(format!(
-                    "deploy error, couldn't list devices in group {}. Status code '{}' response '{}'",
+                    "deployment error, couldn't list devices in group {}. Status code '{}' response '{}'",
                     group, list_devices.status(), list_devices.text().unwrap()))));
             }
             let mut res = list_devices.json::<Vec<String>>()?;
@@ -100,8 +115,29 @@ pub fn deploy(conf: &Config) -> Result<u32, Box<dyn Error>> {
                 Some(page_idx + 1)
             };
         }
-        println!("Devices: {:?}", devices);
-        Ok(0)
+
+        // Post deployment
+        let nb_devices = devices.len();
+        let deploy_data = DeployData {
+            artifact_name: artifact,
+            name,
+            devices,
+        };
+        let url_deploy = conf.server_url.clone() + DEPLOY_API;
+        let post_deploy = client
+            .post(&url_deploy)
+            .bearer_auth(token)
+            .json(&deploy_data)
+            .send()?;
+        if post_deploy.status().is_success() {
+            Ok(nb_devices)
+        } else {
+            Err(Box::new(MenderError::new(format!(
+                "deployment failed. Status code '{}' response '{}'",
+                post_deploy.status(),
+                post_deploy.text().unwrap()
+            ))))
+        }
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be Deploy and token must be provided for deploy",
