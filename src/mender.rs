@@ -108,12 +108,12 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
                     group, list_devices.status(), list_devices.text().unwrap()))));
             }
             let mut res = list_devices.json::<Vec<String>>()?;
-            devices.append(&mut res);
             page = if res.len() == 0 {
                 None
             } else {
                 Some(page_idx + 1)
             };
+            devices.append(&mut res);
         }
 
         // Post deployment
