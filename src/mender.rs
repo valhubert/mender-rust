@@ -1,10 +1,13 @@
 use super::parse::{Command, Config};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Display;
+use std::io::Write;
 
 pub const LOGIN_API: &str = "/api/management/v1/useradm/auth/login";
 pub const DEPLOY_API: &str = "/api/management/v1/deployments/deployments";
+pub const GET_DEVICES_INVENTORY_API: &str = "/api/management/v1/inventory/devices";
+pub const GET_DEVICES_AUTH_API: &str = "/api/management/v2/devauth/devices";
 
 #[derive(Debug)]
 pub struct MenderError {
@@ -141,6 +144,88 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be Deploy and token must be provided for deploy",
+        ))))
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct MenderId {
+    id: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct MenderIdentity {
+    id: String,
+    identity_data: MenderSn,
+}
+
+#[derive(Deserialize, Debug)]
+struct MenderSn {
+    SerialNumber: String,
+}
+
+/// Get mender id of a device based on its SerialNumber attribute.
+/// The command must be getid and a token must be provided.
+pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
+    if let (Command::GetId { serial_number }, Some(token)) = (&conf.command, &conf.token) {
+        println!("Searching for device with SerialNumber {}", &serial_number);
+
+        let client = blocking_client(None)?;
+        let get_device_inventory = client
+            .get(&format!(
+                "{}{}",
+                &conf.server_url, GET_DEVICES_INVENTORY_API
+            ))
+            .bearer_auth(token)
+            .query(&[("SerialNumber", serial_number)])
+            .send()?;
+
+        let mut res = get_device_inventory.json::<Vec<MenderId>>()?;
+        if let Some(mender_id) = res.pop() {
+            Ok(mender_id.id)
+        } else {
+            println!("SerialNumber not found in attributes, searching in identity data.");
+
+            let mut page = Some(1);
+            while let Some(page_idx) = page {
+                print!(".");
+                std::io::stdout().flush().unwrap();
+                let get_devices_auth = client
+                    .get(&format!("{}{}", &conf.server_url, GET_DEVICES_AUTH_API))
+                    .bearer_auth(token)
+                    .query(&[
+                        ("per_page", "500"),
+                        ("page", &page_idx.to_string()),
+                        ("status", "accepted"),
+                    ])
+                    .send()?;
+                let res = get_devices_auth.json::<Vec<MenderIdentity>>()?;
+                let nb_results = res.len();
+                if let Some(mender_identity) = res
+                    .into_iter()
+                    .filter(|mender_identity| {
+                        mender_identity.identity_data.SerialNumber.as_str() == serial_number
+                    })
+                    .next()
+                {
+                    println!("");
+                    return Ok(mender_identity.id);
+                } else {
+                    page = if nb_results == 0 {
+                        None
+                    } else {
+                        Some(page_idx + 1)
+                    };
+                }
+            }
+            println!("");
+            Err(Box::new(MenderError::new(String::from(
+                "SerialNumber not found",
+            ))))
+        }
+    } else {
+        Err(Box::new(MenderError::new(String::from(
+            "Command must be getid and token must be provided in get_id call",
         ))))
     }
 }

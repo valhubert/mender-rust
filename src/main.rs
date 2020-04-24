@@ -38,6 +38,7 @@ fn run(config: parse::Config) -> Result<(), Box<dyn Error>> {
         parse::Command::Deploy { .. } => {
             println!("Deployed to {} devices", mender::deploy(&config)?)
         }
+        parse::Command::GetId { .. } => println!("Mender id is: {}", mender::get_id(&config)?),
         _ => println!("Another command"),
     };
     Ok(())
