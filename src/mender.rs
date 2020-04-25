@@ -229,3 +229,23 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
         ))))
     }
 }
+
+/// Get info of a device
+pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
+    if let (Command::GetInfo { id }, Some(token)) = (&conf.command, &conf.token) {
+        let client = blocking_client(None)?;
+        let get_device_inventory = client
+            .get(&format!(
+                "{}{}/{}",
+                &conf.server_url, GET_DEVICES_INVENTORY_API, id
+            ))
+            .bearer_auth(token)
+            .send()?;
+        let json: serde_json::Value = get_device_inventory.json()?;
+        Ok(serde_json::to_string_pretty(&json)?)
+    } else {
+        Err(Box::new(MenderError::new(String::from(
+            "Command must be getinfo and token must be provided in get_info call",
+        ))))
+    }
+}
