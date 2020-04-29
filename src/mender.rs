@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Display;
 use std::io::Write;
+use std::collections::HashMap;
 
 pub const LOGIN_API: &str = "/api/management/v1/useradm/auth/login";
 pub const DEPLOY_API: &str = "/api/management/v1/deployments/deployments";
@@ -276,23 +277,33 @@ impl MenderDevice {
 /// Return the list of artifacts with a count of how much devices are using it.
 pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
     if let (Command::CountArtifacts, Some(token)) = (&conf.command, &conf.token) {
+        print!("Inventoring artifact used by devices");
         let client = blocking_client(None)?;
+        let mut artifacts_count = HashMap::new();
         let mut page = Some(1);
         while let Some(page_idx) = page {
+            print!(".");
+            std::io::stdout().flush().unwrap();
             let get_devices_inv = client
                 .get(&format!("{}{}", &conf.server_url, GET_DEVICES_INVENTORY_API))
                 .bearer_auth(token)
                 .query(&[
-                    ("per_page", "2"),
+                    ("per_page", "500"),
                     ("page", &page_idx.to_string())
                 ])
                 .send()?;
             let res = get_devices_inv.json::<Vec<MenderDevice>>()?;
+            let nb_devices = res.len();
             let artifacts: Vec<String> = res.into_iter().map(|device| device.artifact_name()).collect();
-            println!("{:?}", artifacts);
-            page = None;
+            for artifact in artifacts {
+                let count = artifacts_count.entry(artifact).or_insert(0);
+                *count += 1;
+            }
+            page = if nb_devices > 0 { Some(page_idx+1) } else { None };
         }
-        Ok(String::new())
+        println!("");
+        // TODO: order and better format
+        Ok(format!("{:?}", artifacts_count))
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be countartifacts and token must be provided in count_artifacts call",
