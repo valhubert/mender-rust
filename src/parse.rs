@@ -10,10 +10,11 @@ Available commands are:
    An optional name can be given, if there are none the group name is used.
  * getid serialnumber -> get the mender id of a device based on its attribute SerialNumber.
  * getinfo id -> return info of the device with the given id.
+ * countartifacts -> return a count of the artifacts used by the devices.
 
 Used environment variables:
  * SERVER_URL -> url of the mender server, must be provided.
- * TOKEN -> authentication token, must be provided for deploy, getid and getinfo commands.
+ * TOKEN -> authentication token, must be provided for deploy, getid, getinfo and countartifacts commands.
  * CERT_FILE -> optional verification certificate for the server secure connection.";
 
 pub struct Config {
@@ -41,10 +42,10 @@ impl Config {
             None
         };
         match &command {
-            Command::Deploy { .. } | Command::GetId { .. } | Command::GetInfo { .. }
+            Command::Deploy { .. } | Command::GetId { .. } | Command::GetInfo { .. } | Command::CountArtifacts
                 if token == None =>
             {
-                return Err("TOKEN must be provided for deploy, getid and getinfo commands")
+                return Err("TOKEN must be provided for deploy, getid, getinfo and countartifacts commands")
             }
             _ => (),
         }
@@ -73,6 +74,7 @@ pub enum Command {
     GetInfo {
         id: String,
     },
+    CountArtifacts,
     Help,
 }
 
@@ -83,6 +85,7 @@ impl Command {
         }
         match args[1].as_str() {
             "help" => Ok(Command::Help),
+            "countartifacts" => Ok(Command::CountArtifacts),
             "login" => {
                 if args.len() < 3 {
                     return Err("email must be provided in login command");

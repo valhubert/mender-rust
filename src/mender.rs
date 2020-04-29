@@ -249,3 +249,53 @@ pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
         ))))
     }
 }
+
+#[derive(Deserialize, Debug)]
+struct MenderAttribute {
+    name: String,
+    value: String
+}
+
+#[derive(Deserialize, Debug)]
+struct MenderDevice {
+    id: String,
+    attributes: Vec<MenderAttribute>
+}
+
+impl MenderDevice {
+    fn artifact_name(&self) -> String {
+        for attribute in &self.attributes {
+            if attribute.name == "artifact_name" {
+                return attribute.value.clone();
+            }
+        }
+        return String::new();
+    }
+}
+
+/// Return the list of artifacts with a count of how much devices are using it.
+pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
+    if let (Command::CountArtifacts, Some(token)) = (&conf.command, &conf.token) {
+        let client = blocking_client(None)?;
+        let mut page = Some(1);
+        while let Some(page_idx) = page {
+            let get_devices_inv = client
+                .get(&format!("{}{}", &conf.server_url, GET_DEVICES_INVENTORY_API))
+                .bearer_auth(token)
+                .query(&[
+                    ("per_page", "2"),
+                    ("page", &page_idx.to_string())
+                ])
+                .send()?;
+            let res = get_devices_inv.json::<Vec<MenderDevice>>()?;
+            let artifacts: Vec<String> = res.into_iter().map(|device| device.artifact_name()).collect();
+            println!("{:?}", artifacts);
+            page = None;
+        }
+        Ok(String::new())
+    } else {
+        Err(Box::new(MenderError::new(String::from(
+            "Command must be countartifacts and token must be provided in count_artifacts call",
+        ))))
+    }
+}
