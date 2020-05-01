@@ -42,10 +42,15 @@ impl Config {
             None
         };
         match &command {
-            Command::Deploy { .. } | Command::GetId { .. } | Command::GetInfo { .. } | Command::CountArtifacts
+            Command::Deploy { .. }
+            | Command::GetId { .. }
+            | Command::GetInfo { .. }
+            | Command::CountArtifacts
                 if token == None =>
             {
-                return Err("TOKEN must be provided for deploy, getid, getinfo and countartifacts commands")
+                return Err(
+                    "TOKEN must be provided for deploy, getid, getinfo and countartifacts commands",
+                )
             }
             _ => (),
         }

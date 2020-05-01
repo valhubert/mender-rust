@@ -1,9 +1,9 @@
 use super::parse::{Command, Config};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::io::Write;
-use std::collections::HashMap;
 
 pub const LOGIN_API: &str = "/api/management/v1/useradm/auth/login";
 pub const DEPLOY_API: &str = "/api/management/v1/deployments/deployments";
@@ -254,20 +254,22 @@ pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
 #[derive(Deserialize, Debug)]
 struct MenderAttribute {
     name: String,
-    value: String
+    value: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct MenderDevice {
     id: String,
-    attributes: Vec<MenderAttribute>
+    attributes: Option<Vec<MenderAttribute>>,
 }
 
 impl MenderDevice {
     fn artifact_name(&self) -> String {
-        for attribute in &self.attributes {
-            if attribute.name == "artifact_name" {
-                return attribute.value.clone();
+        if let Some(attributes) = &self.attributes {
+            for attribute in attributes {
+                if attribute.name == "artifact_name" {
+                    return attribute.value.clone();
+                }
             }
         }
         return String::new();
@@ -285,28 +287,44 @@ pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
             print!(".");
             std::io::stdout().flush().unwrap();
             let get_devices_inv = client
-                .get(&format!("{}{}", &conf.server_url, GET_DEVICES_INVENTORY_API))
+                .get(&format!(
+                    "{}{}",
+                    &conf.server_url, GET_DEVICES_INVENTORY_API
+                ))
                 .bearer_auth(token)
-                .query(&[
-                    ("per_page", "500"),
-                    ("page", &page_idx.to_string())
-                ])
+                .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
                 .send()?;
             let res = get_devices_inv.json::<Vec<MenderDevice>>()?;
             let nb_devices = res.len();
-            let artifacts: Vec<String> = res.into_iter().map(|device| device.artifact_name()).collect();
+            let artifacts: Vec<String> = res
+                .into_iter()
+                .map(|device| device.artifact_name())
+                .collect();
             for artifact in artifacts {
                 let count = artifacts_count.entry(artifact).or_insert(0);
                 *count += 1;
             }
-            page = if nb_devices > 0 { Some(page_idx+1) } else { None };
+            page = if nb_devices > 0 {
+                Some(page_idx + 1)
+            } else {
+                None
+            };
         }
         println!("");
-        // TODO: order and better format
-        Ok(format!("{:?}", artifacts_count))
+        Ok(display_ordered(artifacts_count))
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be countartifacts and token must be provided in count_artifacts call",
         ))))
     }
+}
+
+fn display_ordered(map: HashMap<String, i32>) -> String {
+    let mut vec: Vec<(&String, &i32)> = map.iter().collect();
+    vec.sort_by(|a, b| b.1.cmp(a.1));
+    let mut disp = String::new();
+    for (key, value) in vec {
+        disp.push_str(&format!("{}: {}\n", key, value));
+    }
+    disp
 }
