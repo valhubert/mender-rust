@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
-use std::io::Write;
+use std::fs::File;
+use std::io::{Read, Write};
 
 pub const LOGIN_API: &str = "/api/management/v1/useradm/auth/login";
 pub const DEPLOY_API: &str = "/api/management/v1/deployments/deployments";
@@ -30,20 +31,25 @@ impl MenderError {
 }
 
 fn blocking_client(
-    cert: Option<reqwest::Certificate>,
-) -> reqwest::Result<reqwest::blocking::Client> {
-    reqwest::blocking::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
+    cert_file: &Option<String>,
+) -> Result<reqwest::blocking::Client, Box<dyn Error>> {
+    if let Some(cert_file) = cert_file {
+        let mut buf = Vec::new();
+        File::open(cert_file)?.read_to_end(&mut buf)?;
+        let cert = reqwest::Certificate::from_pem(&buf)?;
+        Ok(reqwest::blocking::Client::builder()
+            .add_root_certificate(cert)
+            .build()?)
+    } else {
+        Ok(reqwest::blocking::Client::builder().build()?)
+    }
 }
 
 /// Request an auth token from mender server, it should be called
 /// with a Login command otherwise an error is returned.
 pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
-    // WARNING: should add cert from Config instead of ignoring
-    // all errors !!
     if let Command::Login { email } = &conf.command {
-        let client = blocking_client(None)?;
+        let client = blocking_client(&conf.cert_file)?;
         let url_login = conf.server_url.clone() + LOGIN_API;
         let get_token = client
             .post(&url_login)
@@ -91,7 +97,7 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
             "Posting deployment to group {} using artifact {} and with name {}.",
             &group, &artifact, &name
         );
-        let client = blocking_client(None)?;
+        let client = blocking_client(&conf.cert_file)?;
 
         // List devices in the group
         let mut page = Some(1);
@@ -161,6 +167,7 @@ struct MenderIdentity {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
 struct MenderSn {
     SerialNumber: String,
 }
@@ -171,7 +178,7 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
     if let (Command::GetId { serial_number }, Some(token)) = (&conf.command, &conf.token) {
         println!("Searching for device with SerialNumber {}", &serial_number);
 
-        let client = blocking_client(None)?;
+        let client = blocking_client(&conf.cert_file)?;
         let get_device_inventory = client
             .get(&format!(
                 "{}{}",
@@ -234,7 +241,7 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
 /// Get info of a device
 pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
     if let (Command::GetInfo { id }, Some(token)) = (&conf.command, &conf.token) {
-        let client = blocking_client(None)?;
+        let client = blocking_client(&conf.cert_file)?;
         let get_device_inventory = client
             .get(&format!(
                 "{}{}/{}",
@@ -280,7 +287,7 @@ impl MenderDevice {
 pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
     if let (Command::CountArtifacts, Some(token)) = (&conf.command, &conf.token) {
         print!("Inventoring artifact used by devices");
-        let client = blocking_client(None)?;
+        let client = blocking_client(&conf.cert_file)?;
         let mut artifacts_count = HashMap::new();
         let mut page = Some(1);
         while let Some(page_idx) = page {
