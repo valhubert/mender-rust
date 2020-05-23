@@ -188,6 +188,14 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
             .query(&[("SerialNumber", serial_number)])
             .send()?;
 
+        if !get_device_inventory.status().is_success() {
+            return Err(Box::new(MenderError::new(format!(
+                "searching device failed. Status code '{}' response '{}'",
+                get_device_inventory.status(),
+                get_device_inventory.text().unwrap()
+            ))));
+        }
+
         let mut res = get_device_inventory.json::<Vec<MenderId>>()?;
         if let Some(mender_id) = res.pop() {
             Ok(mender_id.id)
@@ -207,6 +215,15 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
                         ("status", "accepted"),
                     ])
                     .send()?;
+
+                if !get_devices_auth.status().is_success() {
+                    return Err(Box::new(MenderError::new(format!(
+                        "searching device failed. Status code '{}' response '{}'",
+                        get_devices_auth.status(),
+                        get_devices_auth.text().unwrap()
+                    ))));
+                }
+
                 let res = get_devices_auth.json::<Vec<MenderIdentity>>()?;
                 let nb_results = res.len();
                 if let Some(mender_identity) = res
@@ -249,6 +266,15 @@ pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
             ))
             .bearer_auth(token)
             .send()?;
+
+        if !get_device_inventory.status().is_success() {
+            return Err(Box::new(MenderError::new(format!(
+                "get info failed. Status code '{}' response '{}'",
+                get_device_inventory.status(),
+                get_device_inventory.text().unwrap()
+            ))));
+        }
+
         let json: serde_json::Value = get_device_inventory.json()?;
         Ok(serde_json::to_string_pretty(&json)?)
     } else {
@@ -301,6 +327,15 @@ pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
                 .bearer_auth(token)
                 .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
                 .send()?;
+
+            if !get_devices_inv.status().is_success() {
+                return Err(Box::new(MenderError::new(format!(
+                    "searching device failed. Status code '{}' response '{}'",
+                    get_devices_inv.status(),
+                    get_devices_inv.text().unwrap()
+                ))));
+            }
+
             let res = get_devices_inv.json::<Vec<MenderDevice>>()?;
             let nb_devices = res.len();
             let artifacts: Vec<String> = res
