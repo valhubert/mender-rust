@@ -45,6 +45,19 @@ fn blocking_client(
     }
 }
 
+macro_rules! check_success {
+    ($response:expr, $cmd:expr) => {
+        if !$response.status().is_success() {
+            return Err(Box::new(MenderError::new(format!(
+                "{} failed. Status code '{}' response '{}'",
+                $cmd,
+                $response.status(),
+                $response.text().unwrap()
+            ))));
+        }
+    };
+}
+
 /// Request an auth token from mender server, it should be called
 /// with a Login command otherwise an error is returned.
 pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
@@ -55,15 +68,9 @@ pub fn get_token(conf: &Config, pass: &str) -> Result<String, Box<dyn Error>> {
             .post(&url_login)
             .basic_auth(&email, Some(pass))
             .send()?;
-        if get_token.status().is_success() {
-            Ok(get_token.text().unwrap())
-        } else {
-            Err(Box::new(MenderError::new(format!(
-                "login error. Status code '{}' response '{}'",
-                get_token.status(),
-                get_token.text().unwrap()
-            ))))
-        }
+
+        check_success!(get_token, "login");
+        Ok(get_token.text().unwrap())
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be Login for get_token",
@@ -112,11 +119,8 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
                 .bearer_auth(token)
                 .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
                 .send()?;
-            if !list_devices.status().is_success() {
-                return Err(Box::new(MenderError::new(format!(
-                    "deployment error, couldn't list devices in group {}. Status code '{}' response '{}'",
-                    group, list_devices.status(), list_devices.text().unwrap()))));
-            }
+
+            check_success!(list_devices, "deployment");
             let mut res = list_devices.json::<Vec<String>>()?;
             page = if res.len() == 0 {
                 None
@@ -139,15 +143,9 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
             .bearer_auth(token)
             .json(&deploy_data)
             .send()?;
-        if post_deploy.status().is_success() {
-            Ok(nb_devices)
-        } else {
-            Err(Box::new(MenderError::new(format!(
-                "deployment failed. Status code '{}' response '{}'",
-                post_deploy.status(),
-                post_deploy.text().unwrap()
-            ))))
-        }
+
+        check_success!(post_deploy, "deployment");
+        Ok(nb_devices)
     } else {
         Err(Box::new(MenderError::new(String::from(
             "Command must be Deploy and token must be provided for deploy",
@@ -188,14 +186,7 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
             .query(&[("SerialNumber", serial_number)])
             .send()?;
 
-        if !get_device_inventory.status().is_success() {
-            return Err(Box::new(MenderError::new(format!(
-                "searching device failed. Status code '{}' response '{}'",
-                get_device_inventory.status(),
-                get_device_inventory.text().unwrap()
-            ))));
-        }
-
+        check_success!(get_device_inventory, "searching device");
         let mut res = get_device_inventory.json::<Vec<MenderId>>()?;
         if let Some(mender_id) = res.pop() {
             Ok(mender_id.id)
@@ -216,14 +207,7 @@ pub fn get_id(conf: &Config) -> Result<String, Box<dyn Error>> {
                     ])
                     .send()?;
 
-                if !get_devices_auth.status().is_success() {
-                    return Err(Box::new(MenderError::new(format!(
-                        "searching device failed. Status code '{}' response '{}'",
-                        get_devices_auth.status(),
-                        get_devices_auth.text().unwrap()
-                    ))));
-                }
-
+                check_success!(get_devices_auth, "device search");
                 let res = get_devices_auth.json::<Vec<MenderIdentity>>()?;
                 let nb_results = res.len();
                 if let Some(mender_identity) = res
@@ -267,14 +251,7 @@ pub fn get_info(conf: &Config) -> Result<String, Box<dyn Error>> {
             .bearer_auth(token)
             .send()?;
 
-        if !get_device_inventory.status().is_success() {
-            return Err(Box::new(MenderError::new(format!(
-                "get info failed. Status code '{}' response '{}'",
-                get_device_inventory.status(),
-                get_device_inventory.text().unwrap()
-            ))));
-        }
-
+        check_success!(get_device_inventory, "get info");
         let json: serde_json::Value = get_device_inventory.json()?;
         Ok(serde_json::to_string_pretty(&json)?)
     } else {
@@ -328,14 +305,7 @@ pub fn count_artifacts(conf: &Config) -> Result<String, Box<dyn Error>> {
                 .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
                 .send()?;
 
-            if !get_devices_inv.status().is_success() {
-                return Err(Box::new(MenderError::new(format!(
-                    "searching device failed. Status code '{}' response '{}'",
-                    get_devices_inv.status(),
-                    get_devices_inv.text().unwrap()
-                ))));
-            }
-
+            check_success!(get_devices_inv, "artifacts counting");
             let res = get_devices_inv.json::<Vec<MenderDevice>>()?;
             let nb_devices = res.len();
             let artifacts: Vec<String> = res
