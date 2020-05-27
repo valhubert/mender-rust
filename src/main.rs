@@ -1,3 +1,4 @@
+use clap::{App, Arg, SubCommand};
 use std::env;
 use std::error::Error;
 use std::process;
@@ -6,6 +7,21 @@ mod mender;
 mod parse;
 
 fn main() {
+    let matches = App::new("mender-rust")
+        .version("0.1.0")
+        .author("V. Hubert <v-hubert@laposte.net>")
+        .about("A small command line tool to perform tasks on a Mender server using its APIs.")
+        .subcommand(
+            SubCommand::with_name("login")
+                .about("returns a token used in other subcommands")
+                .arg(
+                    Arg::with_name("email")
+                        .help("user email used to login to Mender server")
+                        .required(true),
+                ),
+        )
+        .get_matches();
+
     let args: Vec<String> = env::args().collect();
 
     let command = parse::Command::new(&args).unwrap_or_else(|err| {
