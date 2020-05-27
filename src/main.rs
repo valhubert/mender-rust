@@ -20,6 +20,28 @@ fn main() {
                         .required(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("getid")
+                .about("get the mender id of a device from its SerialNumber attribute")
+                .arg(
+                    Arg::with_name("serial number")
+                        .help("SerialNumber attribute of the device")
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("getinfo")
+                .about("get info of a device")
+                .arg(
+                    Arg::with_name("id")
+                        .help("Mender id of the device")
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("countartifacts")
+                .about("list artifacts and count how much devices are using each")
+        )
         .get_matches();
 
     let args: Vec<String> = env::args().collect();
