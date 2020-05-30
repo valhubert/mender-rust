@@ -1,4 +1,3 @@
-use std::env;
 use std::error::Error;
 use std::process;
 
@@ -12,10 +11,6 @@ fn main() {
         println!("Parse error: {}", err);
         process::exit(1);
     });
-    if command == parse::Command::Help {
-        println!("{}", parse::HELP_STR);
-        process::exit(0);
-    }
     let config = parse::Config::new(command).unwrap_or_else(|err| {
         println!("Config error: {}", err);
         process::exit(1);

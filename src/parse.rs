@@ -1,24 +1,5 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-pub const HELP_STR: &str = "\
-This is mender-rust utility, a small command line tool
-to perform tasks on a Mender server using its APIs.
-
-Available commands are:
- * help -> display this help.
- * login email -> returns a token for the given user email, password
-   needs to be typed manually.
- * deploy group artifact [name] -> deploy the given artifact to the given group.
-   An optional name can be given, if there are none the group name is used.
- * getid serialnumber -> get the mender id of a device based on its attribute SerialNumber.
- * getinfo id -> return info of the device with the given id.
- * countartifacts -> return a count of the artifacts used by the devices.
-
-Used environment variables:
- * SERVER_URL -> url of the mender server, must be provided.
- * TOKEN -> authentication token, must be provided for deploy, getid, getinfo and countartifacts commands.
- * CERT_FILE -> optional verification certificate for the server secure connection.";
-
 pub fn build_cli() -> App<'static, 'static> {
     App::new("mender-rust")
         .version("0.1.0")
@@ -154,7 +135,6 @@ pub enum Command {
         id: String,
     },
     CountArtifacts,
-    Help,
 }
 
 impl Command {
@@ -173,63 +153,5 @@ impl Command {
             }),
             _ => return Err("unrecognized or no subcommand, see help for available subcommands"),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn no_args() {
-        let args = vec![String::from("name")];
-        assert!(Command::new(&args).is_err());
-    }
-
-    #[test]
-    fn help_cmd() {
-        let args = vec![String::from("name"), String::from("help")];
-        let command = Command::new(&args).unwrap();
-        assert_eq!(command, Command::Help);
-    }
-
-    #[test]
-    fn login_no_email() {
-        let args = vec![String::from("name"), String::from("login")];
-        assert!(Command::new(&args).is_err());
-    }
-
-    #[test]
-    fn login_email() {
-        let email = String::from("toto@mail.com");
-        let args = vec![String::from("name"), String::from("login"), email.clone()];
-        let command = Command::new(&args).unwrap();
-        assert_eq!(command, Command::Login { email });
-    }
-
-    #[test]
-    fn deploy_no_args() {
-        let args = vec![String::from("name"), String::from("deploy")];
-        assert!(Command::new(&args).is_err());
-    }
-
-    #[test]
-    fn deploy_group_artifact() {
-        let (group, artifact) = (String::from("prod"), String::from("release"));
-        let args = vec![
-            String::from("name"),
-            String::from("deploy"),
-            group.clone(),
-            artifact.clone(),
-        ];
-        let command = Command::new(&args).unwrap();
-        assert_eq!(
-            command,
-            Command::Deploy {
-                group,
-                artifact,
-                name: String::new()
-            }
-        );
     }
 }
