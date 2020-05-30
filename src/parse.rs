@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, ArgMatches, SubCommand};
 
 pub const HELP_STR: &str = "\
 This is mender-rust utility, a small command line tool
@@ -28,7 +28,8 @@ pub fn build_cli() -> App<'static, 'static> {
             "ENVIRONMENT VARIABLES:
     SERVER_URL  Url of the mender server, must be provided
     TOKEN       Authentication token, must be provided for all subcommands except login and help
-    CERT_FILE   Optional certificate for the SSL connection to the server")
+    CERT_FILE   Optional certificate for the SSL connection to the server",
+        )
         .subcommand(
             SubCommand::with_name("login")
                 .about("Returns a token used in other subcommands")
@@ -157,52 +158,20 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn new(args: &[String]) -> Result<Command, &'static str> {
-        if args.len() == 1 {
-            return Err(HELP_STR);
-        }
-        match args[1].as_str() {
-            "help" => Ok(Command::Help),
-            "countartifacts" => Ok(Command::CountArtifacts),
-            "login" => {
-                if args.len() < 3 {
-                    return Err("email must be provided in login command");
-                }
-                Ok(Command::Login {
-                    email: args[2].clone(),
-                })
-            }
-            "deploy" => {
-                if args.len() < 4 {
-                    return Err("group and artifact must be provided in deploy command");
-                }
-                Ok(Command::Deploy {
-                    group: args[2].clone(),
-                    artifact: args[3].clone(),
-                    name: if args.len() == 5 {
-                        args[4].clone()
-                    } else {
-                        String::new()
-                    },
-                })
-            }
-            "getid" => {
-                if args.len() < 3 {
-                    return Err("serial number must be provided in getid command");
-                }
-                Ok(Command::GetId {
-                    serial_number: args[2].clone(),
-                })
-            }
-            "getinfo" => {
-                if args.len() < 3 {
-                    return Err("id must be provided in getinfo command");
-                }
-                Ok(Command::GetInfo {
-                    id: args[2].clone(),
-                })
-            }
-            _ => return Err("unrecognized command, run help to see available commands"),
+    pub fn new(args: ArgMatches) -> Result<Command, &'static str> {
+        match args.subcommand() {
+            ("countartifacts", _) => Ok(Command::CountArtifacts),
+            ("login", Some(sub_args)) => Ok(Command::Login {
+                email: sub_args.value_of("email").unwrap().to_string(),
+            }),
+            ("deploy", Some(_sub_args)) => Err("deploy not handled yet!"),
+            ("getid", Some(sub_args)) => Ok(Command::GetId {
+                serial_number: sub_args.value_of("serial number").unwrap().to_string(),
+            }),
+            ("getinfo", Some(sub_args)) => Ok(Command::GetInfo {
+                id: sub_args.value_of("id").unwrap().to_string(),
+            }),
+            _ => return Err("unrecognized or no subcommand, see help for available subcommands"),
         }
     }
 }

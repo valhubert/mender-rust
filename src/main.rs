@@ -8,9 +8,7 @@ mod parse;
 fn main() {
     let matches = parse::build_cli().get_matches();
 
-    let args: Vec<String> = env::args().collect();
-
-    let command = parse::Command::new(&args).unwrap_or_else(|err| {
+    let command = parse::Command::new(matches).unwrap_or_else(|err| {
         println!("Parse error: {}", err);
         process::exit(1);
     });
