@@ -1,3 +1,5 @@
+use clap::{App, Arg, SubCommand};
+
 pub const HELP_STR: &str = "\
 This is mender-rust utility, a small command line tool
 to perform tasks on a Mender server using its APIs.
@@ -16,6 +18,72 @@ Used environment variables:
  * SERVER_URL -> url of the mender server, must be provided.
  * TOKEN -> authentication token, must be provided for deploy, getid, getinfo and countartifacts commands.
  * CERT_FILE -> optional verification certificate for the server secure connection.";
+
+pub fn build_cli() -> App<'static, 'static> {
+    App::new("mender-rust")
+        .version("0.1.0")
+        .author("V. Hubert <v-hubert@laposte.net>")
+        .about("A small command line tool to perform tasks on a Mender server using its APIs.")
+        .subcommand(
+            SubCommand::with_name("login")
+                .about("returns a token used in other subcommands")
+                .arg(
+                    Arg::with_name("email")
+                        .help("user email used to login to Mender server")
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("getid")
+                .about("get the mender id of a device from its SerialNumber attribute")
+                .arg(
+                    Arg::with_name("serial number")
+                        .help("SerialNumber attribute of the device")
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("getinfo")
+                .about("get info of a device")
+                .arg(
+                    Arg::with_name("id")
+                        .help("Mender id of the device")
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("countartifacts")
+                .about("list artifacts and count how much devices are using each"),
+        )
+        .subcommand(
+            SubCommand::with_name("deploy")
+                .about("deploy an update to a device or to a group of devices")
+                .arg(
+                    Arg::with_name("group")
+                        .help("Name of the group to which the update will be deployed")
+                        .short("g")
+                        .required_unless("device")
+                        .conflicts_with("device")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("device")
+                        .help("Id of the device to which the update will be deployed")
+                        .short("d")
+                        .required_unless("group")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("artifact")
+                        .help("Name of the artifact to deploy")
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("name")
+                        .help("Name of the deployment, if not present device/group name is used"),
+                ),
+        )
+}
 
 pub struct Config {
     pub command: Command,
