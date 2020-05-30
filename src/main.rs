@@ -40,7 +40,35 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("countartifacts")
-                .about("list artifacts and count how much devices are using each")
+                .about("list artifacts and count how much devices are using each"),
+        )
+        .subcommand(
+            SubCommand::with_name("deploy")
+                .about("deploy an update to a device or to a group of devices")
+                .arg(
+                    Arg::with_name("group")
+                        .help("Name of the group to which the update will be deployed")
+                        .short("g")
+                        .required_unless("device")
+                        .conflicts_with("device")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("device")
+                        .help("Id of the device to which the update will be deployed")
+                        .short("d")
+                        .required_unless("group")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("artifact")
+                        .help("Name of the artifact to deploy")
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("name")
+                        .help("Name of the deployment, if not present device/group name is used"),
+                ),
         )
         .get_matches();
 
