@@ -24,18 +24,23 @@ pub fn build_cli() -> App<'static, 'static> {
         .version("0.1.0")
         .author("V. Hubert <v-hubert@laposte.net>")
         .about("A small command line tool to perform tasks on a Mender server using its APIs.")
+        .after_help(
+            "ENVIRONMENT VARIABLES:
+    SERVER_URL  Url of the mender server, must be provided
+    TOKEN       Authentication token, must be provided for all subcommands except login and help
+    CERT_FILE   Optional certificate for the SSL connection to the server")
         .subcommand(
             SubCommand::with_name("login")
-                .about("returns a token used in other subcommands")
+                .about("Returns a token used in other subcommands")
                 .arg(
                     Arg::with_name("email")
-                        .help("user email used to login to Mender server")
+                        .help("User email used to login to Mender server")
                         .required(true),
                 ),
         )
         .subcommand(
             SubCommand::with_name("getid")
-                .about("get the mender id of a device from its SerialNumber attribute")
+                .about("Get the mender id of a device from its SerialNumber attribute")
                 .arg(
                     Arg::with_name("serial number")
                         .help("SerialNumber attribute of the device")
@@ -44,7 +49,7 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("getinfo")
-                .about("get info of a device")
+                .about("Get info of a device")
                 .arg(
                     Arg::with_name("id")
                         .help("Mender id of the device")
@@ -53,11 +58,11 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("countartifacts")
-                .about("list artifacts and count how much devices are using each"),
+                .about("List artifacts and count how much devices are using each"),
         )
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("deploy an update to a device or to a group of devices")
+                .about("Deploy an update to a device or to a group of devices")
                 .arg(
                     Arg::with_name("group")
                         .help("Name of the group to which the update will be deployed")
