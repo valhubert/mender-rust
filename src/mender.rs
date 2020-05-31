@@ -85,10 +85,9 @@ struct DeployData<'a> {
     devices: Vec<String>,
 }
 
-/// Deploy an update to a device group, return the number of devices affected.
-/// An error can occur if communication with the server fails,
-/// if the group or the artifact is not found
-/// and if command is not Deploy or token is not present.
+/// Deploy an update to a device group or a single device, return the number of devices affected.
+/// An error can occur if communication with the server fails, if the group, device or the
+/// artifact is not found and if command is not Deploy or token is not present.
 pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
     if let (
         Command::Deploy {
