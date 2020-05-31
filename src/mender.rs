@@ -93,41 +93,66 @@ pub fn deploy(conf: &Config) -> Result<usize, Box<dyn Error>> {
     if let (
         Command::Deploy {
             group,
+            device,
             artifact,
             name,
         },
         Some(token),
     ) = (&conf.command, &conf.token)
     {
-        let name = if name.is_empty() { group } else { name };
+        if group.is_none() && device.is_none() {
+            return Err(Box::new(MenderError::new(String::from(
+                "A group or a device id must be provided for deployment",
+            ))));
+        }
+
+        let name = name.as_ref().unwrap_or_else(|| {
+            if group.is_some() {
+                group.as_ref().unwrap()
+            } else {
+                device.as_ref().unwrap()
+            }
+        });
         println!(
-            "Posting deployment to group {} using artifact {} and with name {}.",
-            &group, &artifact, &name
+            "Posting deployment to {} {} using artifact {} and with name {}.",
+            if group.is_some() { "group" } else { "device" },
+            if let Some(group) = group {
+                &group
+            } else {
+                device.as_ref().unwrap()
+            },
+            &artifact,
+            &name
         );
+
         let client = blocking_client(&conf.cert_file)?;
 
         // List devices in the group
         let mut page = Some(1);
         let mut devices: Vec<String> = vec![];
-        while let Some(page_idx) = page {
-            let list_url = format!(
-                "{}/api/management/v1/inventory/groups/{}/devices",
-                conf.server_url, group
-            );
-            let list_devices = client
-                .get(&list_url)
-                .bearer_auth(token)
-                .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
-                .send()?;
+        if let Some(group) = group {
+            while let Some(page_idx) = page {
+                let list_url = format!(
+                    "{}/api/management/v1/inventory/groups/{}/devices",
+                    conf.server_url, group
+                );
+                let list_devices = client
+                    .get(&list_url)
+                    .bearer_auth(token)
+                    .query(&[("per_page", "500"), ("page", &page_idx.to_string())])
+                    .send()?;
 
-            check_success!(list_devices, "deployment");
-            let mut res = list_devices.json::<Vec<String>>()?;
-            page = if res.len() == 0 {
-                None
-            } else {
-                Some(page_idx + 1)
-            };
-            devices.append(&mut res);
+                check_success!(list_devices, "deployment");
+                let mut res = list_devices.json::<Vec<String>>()?;
+                page = if res.len() == 0 {
+                    None
+                } else {
+                    Some(page_idx + 1)
+                };
+                devices.append(&mut res);
+            }
+        } else {
+            devices.push(device.as_ref().unwrap().to_string());
         }
 
         // Post deployment

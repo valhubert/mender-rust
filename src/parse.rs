@@ -124,9 +124,10 @@ pub enum Command {
         email: String,
     },
     Deploy {
-        group: String,
+        group: Option<String>,
+        device: Option<String>,
         artifact: String,
-        name: String,
+        name: Option<String>,
     },
     GetId {
         serial_number: String,
@@ -144,7 +145,12 @@ impl Command {
             ("login", Some(sub_args)) => Ok(Command::Login {
                 email: sub_args.value_of("email").unwrap().to_string(),
             }),
-            ("deploy", Some(_sub_args)) => Err("deploy not handled yet!"),
+            ("deploy", Some(sub_args)) => Ok(Command::Deploy {
+                group: sub_args.value_of("group").map(|s| s.to_string()),
+                device: sub_args.value_of("device").map(|s| s.to_string()),
+                artifact: sub_args.value_of("artifact").unwrap().to_string(),
+                name: sub_args.value_of("name").map(|s| s.to_string()),
+            }),
             ("getid", Some(sub_args)) => Ok(Command::GetId {
                 serial_number: sub_args.value_of("serial number").unwrap().to_string(),
             }),

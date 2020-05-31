@@ -36,7 +36,6 @@ fn run(config: parse::Config) -> Result<(), Box<dyn Error>> {
         parse::Command::GetId { .. } => println!("Mender id is: {}", mender::get_id(&config)?),
         parse::Command::GetInfo { .. } => println!("{}", mender::get_info(&config)?),
         parse::Command::CountArtifacts => println!("{}", mender::count_artifacts(&config)?),
-        _ => println!("Another command"),
     };
     Ok(())
 }
